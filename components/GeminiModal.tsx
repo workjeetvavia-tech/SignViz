@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
+import { X, Sparkles, Loader2 } from 'lucide-react';
 import { generateSignImage, generateSignConcept } from '../services/geminiService';
 
 interface GeminiModalProps {

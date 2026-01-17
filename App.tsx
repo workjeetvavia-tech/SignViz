@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ARCanvas } from './components/ARCanvas';
 import { Controls } from './components/Controls';
 import { GeminiModal } from './components/GeminiModal';

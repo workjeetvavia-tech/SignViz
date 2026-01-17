@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { LightingMode, SignState } from '../types';
-import { Camera, Move, Maximize, AlertCircle } from 'lucide-react';
+import { Camera, AlertCircle } from 'lucide-react';
 
 interface ARCanvasProps {
   sign: SignState | null;
@@ -18,7 +18,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
   onScreenshotTaken
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [streamActive, setStreamActive] = useState(false);
   const [error, setError] = useState<string | null>(null);

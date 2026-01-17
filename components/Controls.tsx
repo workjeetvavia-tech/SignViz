@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { LightingMode } from '../types';
-import { Sun, Moon, Upload, Camera, Sparkles, ImagePlus } from 'lucide-react';
+import { Sun, Moon, Upload, Sparkles } from 'lucide-react';
 
 interface ControlsProps {
   lightingMode: LightingMode;
