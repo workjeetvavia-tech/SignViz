@@ -1,0 +1,7 @@
+{
+  "name": "SignViz AR",
+  "description": "A web-based augmented reality tool for signage visualization. Overlay 2D designs onto real-world camera feeds, adjust lighting for day/night simulation, and capture proofs.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
