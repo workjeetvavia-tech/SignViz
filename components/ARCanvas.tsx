@@ -38,11 +38,20 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
           },
           audio: false
         });
+        
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          // Wait for metadata to load before playing
           videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play();
-            setStreamActive(true);
+            if (videoRef.current) {
+              videoRef.current.play().then(() => {
+                 setStreamActive(true);
+              }).catch(e => {
+                 console.error("Video play failed:", e);
+                 // Fallback: still try to show UI, might need user interaction
+                 setError("Tap screen to start camera (Autoplay blocked)");
+              });
+            }
           };
         }
       } catch (err) {
@@ -260,12 +269,19 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
       onMouseMove={handleTouchMove}
       onMouseUp={handleTouchEnd}
       onWheel={handleWheel}
+      onClick={() => {
+        // Retry play on click if it failed due to autoplay policy
+        if (videoRef.current && videoRef.current.paused) {
+             videoRef.current.play().then(() => setStreamActive(true));
+        }
+      }}
     >
       {/* Camera Feed */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
+        muted
         className="absolute top-0 left-0 w-full h-full object-cover"
         style={{ 
           opacity: streamActive ? 1 : 0,
@@ -276,14 +292,14 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
       />
       
       {!streamActive && !error && (
-        <div className="absolute inset-0 flex items-center justify-center text-white/50">
+        <div className="absolute inset-0 flex items-center justify-center text-white/50 pointer-events-none">
           <Camera className="w-12 h-12 animate-pulse" />
           <span className="ml-2">Initializing AR Camera...</span>
         </div>
       )}
 
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-red-400 p-8 text-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-red-400 p-8 text-center z-50">
             <div className="flex flex-col items-center">
                 <AlertCircle className="w-12 h-12 mb-4" />
                 <p>{error}</p>
