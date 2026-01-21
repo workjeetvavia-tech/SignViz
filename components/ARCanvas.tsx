@@ -5,6 +5,7 @@ import { Camera, AlertCircle } from 'lucide-react';
 interface ARCanvasProps {
   sign: SignState | null;
   lightingMode: LightingMode;
+  cameraZoom: number;
   onUpdateSign: (updates: Partial<SignState>) => void;
   screenshotTrigger: number; // Increment to trigger screenshot
   onScreenshotTaken: (dataUrl: string) => void;
@@ -13,6 +14,7 @@ interface ARCanvasProps {
 export const ARCanvas: React.FC<ARCanvasProps> = ({
   sign,
   lightingMode,
+  cameraZoom,
   onUpdateSign,
   screenshotTrigger,
   onScreenshotTaken
@@ -21,6 +23,7 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [streamActive, setStreamActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
 
   // Touch state
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
@@ -39,6 +42,9 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
           audio: false
         });
         
+        const videoTrack = stream.getVideoTracks()[0];
+        videoTrackRef.current = videoTrack;
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           // Wait for metadata to load before playing
@@ -48,7 +54,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
                  setStreamActive(true);
               }).catch(e => {
                  console.error("Video play failed:", e);
-                 // Fallback: still try to show UI, might need user interaction
                  setError("Tap screen to start camera (Autoplay blocked)");
               });
             }
@@ -70,6 +75,28 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
       }
     };
   }, []);
+
+  // Handle Hardware Zoom
+  useEffect(() => {
+    const track = videoTrackRef.current;
+    if (track && 'applyConstraints' in track) {
+      const capabilities = track.getCapabilities() as any;
+      if (capabilities.zoom) {
+        // Map current 1-10 slider to track capabilities
+        const min = capabilities.zoom.min || 1;
+        const max = capabilities.zoom.max || 1;
+        // Simple linear mapping from 1..5 UI zoom to min..max hardware zoom
+        // Assuming cameraZoom is 1..5
+        const normalizedZoom = min + (max - min) * ((cameraZoom - 1) / 4);
+        
+        track.applyConstraints({
+          advanced: [{ zoom: normalizedZoom }]
+        } as any).catch(err => {
+          console.warn("Could not apply zoom constraints:", err);
+        });
+      }
+    }
+  }, [cameraZoom]);
 
   // Handle Screenshot
   useEffect(() => {
@@ -103,20 +130,16 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
     if (containerRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
       
-      // Calculate Mapping Ratio (Source -> Screen) to handle object-fit: cover cropping
       const screenRatio = containerRect.width / containerRect.height;
       const videoRatio = video.videoWidth / video.videoHeight;
       
-      let scaleFactor = 1; // Screen pixels per Video pixel
+      let scaleFactor = 1; 
       if (screenRatio > videoRatio) {
-        // Screen is wider relative to height: Video fits width, crops top/bottom
         scaleFactor = containerRect.width / video.videoWidth;
       } else {
-        // Screen is taller relative to width: Video fits height, crops left/right
         scaleFactor = containerRect.height / video.videoHeight;
       }
       
-      // Multiplier to convert Screen Dimensions -> Video Source Dimensions
       const multiplier = 1 / scaleFactor;
 
       const img = new Image();
@@ -125,17 +148,12 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
       img.onload = () => {
         ctx.save();
         
-        // Calculate Position
-        // The sign position (sign.position.x/y) is relative to the Center of the Screen.
-        // Since object-fit: cover centers the video, Center of Screen == Center of Video Source.
         const x = (video.videoWidth / 2) + (sign.position.x * multiplier);
         const y = (video.videoHeight / 2) + (sign.position.y * multiplier);
         
         ctx.translate(x, y);
         ctx.rotate(sign.rotation * (Math.PI / 180));
         
-        // Handle CSS max-width constraint logic logic found in the render method
-        // <img className="max-w-[300px]" ... />
         let drawnWidth = img.naturalWidth;
         let drawnHeight = img.naturalHeight;
         const maxScreenW = 300;
@@ -146,18 +164,13 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
           drawnHeight = maxScreenW / ratio;
         }
 
-        // Apply Scale
-        // We draw the image at its "Screen Size" (drawnWidth) * "User Scale" (sign.scale) * "Multiplier" (Resolution Match)
         const finalScale = sign.scale * multiplier;
         ctx.scale(finalScale, finalScale);
 
-        // Apply Shadows
-        // We divide blur/offset by sign.scale so the visual thickness of the shadow remains constant 
-        // (e.g., 20px) regardless of how much the user zooms the sign.
         const shadowScaleCorrection = 1 / sign.scale;
 
         if (lightingMode === LightingMode.NIGHT) {
-             ctx.shadowColor = '#00eaff'; // Cyan glow
+             ctx.shadowColor = '#00eaff'; 
              ctx.shadowBlur = 20 * shadowScaleCorrection;         
         } else {
              ctx.shadowColor = 'rgba(0,0,0,0.5)';
@@ -166,7 +179,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
              ctx.shadowOffsetY = 4 * shadowScaleCorrection;
         }
 
-        // Draw centered relative to the translated origin
         ctx.drawImage(img, -drawnWidth / 2, -drawnHeight / 2, drawnWidth, drawnHeight);
         
         ctx.restore();
@@ -175,20 +187,17 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
     }
   };
 
-  // Touch Handlers for Moving and Scaling
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     e.preventDefault();
     if ('touches' in e) {
       if (e.touches.length === 1) {
         lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       } else if (e.touches.length === 2) {
-        // Pinch start
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         lastDistRef.current = Math.hypot(dx, dy);
       }
     } else {
-        // Mouse
          const me = e as React.MouseEvent;
          lastTouchRef.current = { x: me.clientX, y: me.clientY };
     }
@@ -200,7 +209,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
 
     if ('touches' in e) {
       if (e.touches.length === 1 && lastTouchRef.current) {
-        // Pan
         const touch = e.touches[0];
         const dx = touch.clientX - lastTouchRef.current.x;
         const dy = touch.clientY - lastTouchRef.current.y;
@@ -213,7 +221,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
         });
         lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
       } else if (e.touches.length === 2 && lastDistRef.current) {
-        // Pinch
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const dist = Math.hypot(dx, dy);
@@ -225,10 +232,8 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
         lastDistRef.current = dist;
       }
     } else {
-        // Mouse Drag
         if (lastTouchRef.current) {
             const me = e as React.MouseEvent;
-             // Only move if button is down
              if (me.buttons === 1) {
                 const dx = me.clientX - lastTouchRef.current.x;
                 const dy = me.clientY - lastTouchRef.current.y;
@@ -249,7 +254,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
     lastDistRef.current = null;
   };
 
-  // Wheel to zoom (Desktop support)
   const handleWheel = (e: React.WheelEvent) => {
     if (!sign) return;
     const scaleChange = e.deltaY * -0.001;
@@ -270,13 +274,11 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
       onMouseUp={handleTouchEnd}
       onWheel={handleWheel}
       onClick={() => {
-        // Retry play on click if it failed due to autoplay policy
         if (videoRef.current && videoRef.current.paused) {
              videoRef.current.play().then(() => setStreamActive(true));
         }
       }}
     >
-      {/* Camera Feed */}
       <video
         ref={videoRef}
         autoPlay
@@ -285,7 +287,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
         className="absolute top-0 left-0 w-full h-full object-cover"
         style={{ 
           opacity: streamActive ? 1 : 0,
-          // Darken background in Night Mode
           filter: lightingMode === LightingMode.NIGHT ? 'brightness(0.6) contrast(1.1)' : 'none',
           transition: 'filter 0.5s ease'
         }}
@@ -307,7 +308,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
         </div>
       )}
 
-      {/* AR Overlay */}
       {sign && (
         <div
           className="absolute pointer-events-none origin-center will-change-transform"
@@ -315,10 +315,9 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
             left: '50%',
             top: '50%',
             transform: `translate(-50%, -50%) translate(${sign.position.x}px, ${sign.position.y}px) scale(${sign.scale}) rotate(${sign.rotation}deg)`,
-            // Lighting Effects
             transition: 'filter 0.3s ease',
             filter: lightingMode === LightingMode.NIGHT 
-              ? 'drop-shadow(0 0 20px #00eaff)'  // Strong Cyan Glow, 20px blur
+              ? 'drop-shadow(0 0 20px #00eaff)' 
               : 'drop-shadow(2px 4px 6px rgba(0,0,0,0.5))'
           }}
         >
@@ -328,16 +327,13 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
             className="max-w-[300px] h-auto"
             draggable={false}
           />
-          {/* Debug/Helper border for UX */}
-          <div className="absolute inset-0 border-2 border-white/30 rounded-lg pointer-events-none opacity-0 transition-opacity duration-300 group-active:opacity-100" />
         </div>
       )}
 
-      {/* Helper Text */}
       {streamActive && sign && (
         <div className="absolute top-24 left-0 w-full text-center pointer-events-none">
           <p className="inline-block bg-black/50 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-            Pinch to resize • Drag to move
+            Pinch to resize sign • Drag to move
           </p>
         </div>
       )}

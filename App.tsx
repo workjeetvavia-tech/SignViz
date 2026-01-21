@@ -18,6 +18,7 @@ export default function App() {
   });
 
   const [lightingMode, setLightingMode] = useState<LightingMode>(LightingMode.DAY);
+  const [cameraZoom, setCameraZoom] = useState(1);
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
@@ -48,7 +49,8 @@ export default function App() {
           ...sign,
           imageSrc: e.target.result as string,
           scale: 1, // Reset scale for new image
-          rotation: 0
+          rotation: 0,
+          position: { x: 0, y: 0 }
         });
       }
     };
@@ -61,7 +63,8 @@ export default function App() {
         ...sign,
         imageSrc: imageUrl,
         scale: 1,
-        rotation: 0
+        rotation: 0,
+        position: { x: 0, y: 0 }
       });
       setIsGeneratorOpen(false);
     }
@@ -94,6 +97,7 @@ export default function App() {
       <ARCanvas
         sign={sign}
         lightingMode={lightingMode}
+        cameraZoom={cameraZoom}
         onUpdateSign={handleUpdateSign}
         screenshotTrigger={screenshotTrigger}
         onScreenshotTaken={handleScreenshotTaken}
@@ -102,6 +106,10 @@ export default function App() {
       {/* UI Controls */}
       <Controls
         lightingMode={lightingMode}
+        cameraZoom={cameraZoom}
+        sign={sign}
+        onUpdateSign={handleUpdateSign}
+        onCameraZoomChange={setCameraZoom}
         onToggleLighting={handleToggleLighting}
         onCapture={handleCapture}
         onUpload={handleUpload}
