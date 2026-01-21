@@ -13,7 +13,8 @@ export default function App() {
     id: 'default',
     imageSrc: DEFAULT_SIGN,
     position: { x: 0, y: 0 },
-    scale: 1,
+    scaleX: 1,
+    scaleY: 1,
     rotation: 0
   });
 
@@ -48,7 +49,8 @@ export default function App() {
         setSign({
           ...sign,
           imageSrc: e.target.result as string,
-          scale: 1, // Reset scale for new image
+          scaleX: 1,
+          scaleY: 1,
           rotation: 0,
           position: { x: 0, y: 0 }
         });
@@ -62,7 +64,8 @@ export default function App() {
       setSign({
         ...sign,
         imageSrc: imageUrl,
-        scale: 1,
+        scaleX: 1,
+        scaleY: 1,
         rotation: 0,
         position: { x: 0, y: 0 }
       });

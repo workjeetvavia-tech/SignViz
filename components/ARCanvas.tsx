@@ -35,7 +35,7 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: 'environment', // Use rear camera
+            facingMode: 'environment',
             width: { ideal: 1920 },
             height: { ideal: 1080 }
           },
@@ -47,7 +47,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          // Wait for metadata to load before playing
           videoRef.current.onloadedmetadata = () => {
             if (videoRef.current) {
               videoRef.current.play().then(() => {
@@ -68,7 +67,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
     startCamera();
 
     return () => {
-      // Cleanup stream
       if (videoRef.current?.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
@@ -82,11 +80,8 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
     if (track && 'applyConstraints' in track) {
       const capabilities = track.getCapabilities() as any;
       if (capabilities.zoom) {
-        // Map current 1-10 slider to track capabilities
         const min = capabilities.zoom.min || 1;
         const max = capabilities.zoom.max || 1;
-        // Simple linear mapping from 1..5 UI zoom to min..max hardware zoom
-        // Assuming cameraZoom is 1..5
         const normalizedZoom = min + (max - min) * ((cameraZoom - 1) / 4);
         
         track.applyConstraints({
@@ -110,26 +105,21 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
     const video = videoRef.current;
     if (!video || !sign) return;
 
-    // Use full video resolution to capture entire vision
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 1. Draw Full Video Frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // 2. Apply Darkening for Night Mode
     if (lightingMode === LightingMode.NIGHT) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; // Darken by 40%
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 3. Draw Sign Correctly Positioned on Full Frame
     if (containerRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
-      
       const screenRatio = containerRect.width / containerRect.height;
       const videoRatio = video.videoWidth / video.videoHeight;
       
@@ -164,10 +154,10 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
           drawnHeight = maxScreenW / ratio;
         }
 
-        const finalScale = sign.scale * multiplier;
-        ctx.scale(finalScale, finalScale);
+        // Apply non-uniform scale
+        ctx.scale(sign.scaleX * multiplier, sign.scaleY * multiplier);
 
-        const shadowScaleCorrection = 1 / sign.scale;
+        const shadowScaleCorrection = 1 / Math.max(sign.scaleX, sign.scaleY, 0.1);
 
         if (lightingMode === LightingMode.NIGHT) {
              ctx.shadowColor = '#00eaff'; 
@@ -226,8 +216,10 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
         const dist = Math.hypot(dx, dy);
         
         const scaleFactor = dist / lastDistRef.current;
+        // Pinch scales both dimensions equally to maintain usability
         onUpdateSign({
-          scale: Math.max(0.1, Math.min(sign.scale * scaleFactor, 5.0))
+          scaleX: Math.max(0.1, Math.min(sign.scaleX * scaleFactor, 5.0)),
+          scaleY: Math.max(0.1, Math.min(sign.scaleY * scaleFactor, 5.0))
         });
         lastDistRef.current = dist;
       }
@@ -258,7 +250,8 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
     if (!sign) return;
     const scaleChange = e.deltaY * -0.001;
     onUpdateSign({
-      scale: Math.max(0.1, Math.min(sign.scale + scaleChange, 5.0))
+      scaleX: Math.max(0.1, Math.min(sign.scaleX + scaleChange, 5.0)),
+      scaleY: Math.max(0.1, Math.min(sign.scaleY + scaleChange, 5.0))
     });
   };
 
@@ -314,7 +307,7 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
           style={{
             left: '50%',
             top: '50%',
-            transform: `translate(-50%, -50%) translate(${sign.position.x}px, ${sign.position.y}px) scale(${sign.scale}) rotate(${sign.rotation}deg)`,
+            transform: `translate(-50%, -50%) translate(${sign.position.x}px, ${sign.position.y}px) scale(${sign.scaleX}, ${sign.scaleY}) rotate(${sign.rotation}deg)`,
             transition: 'filter 0.3s ease',
             filter: lightingMode === LightingMode.NIGHT 
               ? 'drop-shadow(0 0 20px #00eaff)' 
@@ -327,14 +320,6 @@ export const ARCanvas: React.FC<ARCanvasProps> = ({
             className="max-w-[300px] h-auto"
             draggable={false}
           />
-        </div>
-      )}
-
-      {streamActive && sign && (
-        <div className="absolute top-24 left-0 w-full text-center pointer-events-none">
-          <p className="inline-block bg-black/50 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-            Pinch to resize sign • Drag to move
-          </p>
         </div>
       )}
     </div>

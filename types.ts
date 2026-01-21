@@ -12,7 +12,8 @@ export interface SignState {
   id: string;
   imageSrc: string;
   position: Position;
-  scale: number;
+  scaleX: number;
+  scaleY: number;
   rotation: number;
 }
 
