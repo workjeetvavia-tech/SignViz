@@ -155,7 +155,10 @@ export default function App() {
       {/* Gemini Modal */}
       <GeminiModal
         isOpen={isGeneratorOpen}
-        onClose={() => setIsFullscreen(false) || setIsGeneratorOpen(false)}
+        onClose={() => {
+          setIsFullscreen(false);
+          setIsGeneratorOpen(false);
+        }}
         onImageSelected={handleGeneratedImageSelected}
       />
 
