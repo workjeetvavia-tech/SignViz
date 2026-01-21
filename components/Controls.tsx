@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { LightingMode, SignState } from '../types';
-import { Sun, Moon, Upload, Sparkles, ZoomIn, ZoomOut, Maximize, RotateCw, Type } from 'lucide-react';
+import { Sun, Moon, Upload, Sparkles, ZoomIn, ZoomOut, RotateCw, RefreshCw } from 'lucide-react';
 
 interface ControlsProps {
   lightingMode: LightingMode;
@@ -31,6 +31,10 @@ export const Controls: React.FC<ControlsProps> = ({
     if (e.target.files && e.target.files[0]) {
       onUpload(e.target.files[0]);
     }
+  };
+
+  const handleResetScale = () => {
+    onUpdateSign({ scaleX: 1, scaleY: 1 });
   };
 
   return (
@@ -68,40 +72,52 @@ export const Controls: React.FC<ControlsProps> = ({
       </div>
 
       {/* Sign Resize Controls (Left Side) */}
-      <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-4 z-30">
+      <div className="absolute left-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-6 z-30">
         
-        {/* Width Slider */}
-        <div className="flex flex-col items-center gap-2 group">
-             <div className="h-32 w-10 flex flex-col items-center py-2 bg-black/40 backdrop-blur-md border border-white/20 rounded-full">
-                <input
-                    type="range"
-                    min="0.1"
-                    max="5"
-                    step="0.05"
-                    value={sign?.scaleX || 1}
-                    onChange={(e) => onUpdateSign({ scaleX: parseFloat(e.target.value) })}
-                    className="h-24 w-1 -rotate-180 appearance-none bg-white/20 rounded-full cursor-pointer accent-green-400"
-                    style={{ writingMode: 'bt-lr' as any, WebkitAppearance: 'slider-vertical' } as any}
-                />
-            </div>
-            <div className="text-[10px] font-bold text-white/50 uppercase">Width</div>
-        </div>
+        {/* Reset Button */}
+        <button 
+          onClick={handleResetScale}
+          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white flex flex-col items-center justify-center active:scale-90 transition-transform hover:bg-white/10"
+          title="Reset Size"
+        >
+          <RefreshCw size={16} />
+          <span className="text-[7px] font-bold uppercase mt-0.5">Reset</span>
+        </button>
 
-        {/* Height Slider */}
-        <div className="flex flex-col items-center gap-2 group">
-             <div className="h-32 w-10 flex flex-col items-center py-2 bg-black/40 backdrop-blur-md border border-white/20 rounded-full">
-                <input
-                    type="range"
-                    min="0.1"
-                    max="5"
-                    step="0.05"
-                    value={sign?.scaleY || 1}
-                    onChange={(e) => onUpdateSign({ scaleY: parseFloat(e.target.value) })}
-                    className="h-24 w-1 -rotate-180 appearance-none bg-white/20 rounded-full cursor-pointer accent-blue-400"
-                    style={{ writingMode: 'bt-lr' as any, WebkitAppearance: 'slider-vertical' } as any}
-                />
+        <div className="flex items-center gap-4">
+            {/* Width Slider */}
+            <div className="flex flex-col items-center gap-2 group">
+                <div className="h-32 w-10 flex flex-col items-center py-2 bg-black/40 backdrop-blur-md border border-white/20 rounded-full">
+                    <input
+                        type="range"
+                        min="0.1"
+                        max="5"
+                        step="0.05"
+                        value={sign?.scaleX || 1}
+                        onChange={(e) => onUpdateSign({ scaleX: parseFloat(e.target.value) })}
+                        className="h-24 w-1 -rotate-180 appearance-none bg-white/20 rounded-full cursor-pointer accent-green-400"
+                        style={{ writingMode: 'bt-lr' as any, WebkitAppearance: 'slider-vertical' } as any}
+                    />
+                </div>
+                <div className="text-[10px] font-bold text-white/50 uppercase">W</div>
             </div>
-            <div className="text-[10px] font-bold text-white/50 uppercase">Height</div>
+
+            {/* Height Slider */}
+            <div className="flex flex-col items-center gap-2 group">
+                <div className="h-32 w-10 flex flex-col items-center py-2 bg-black/40 backdrop-blur-md border border-white/20 rounded-full">
+                    <input
+                        type="range"
+                        min="0.1"
+                        max="5"
+                        step="0.05"
+                        value={sign?.scaleY || 1}
+                        onChange={(e) => onUpdateSign({ scaleY: parseFloat(e.target.value) })}
+                        className="h-24 w-1 -rotate-180 appearance-none bg-white/20 rounded-full cursor-pointer accent-blue-400"
+                        style={{ writingMode: 'bt-lr' as any, WebkitAppearance: 'slider-vertical' } as any}
+                    />
+                </div>
+                <div className="text-[10px] font-bold text-white/50 uppercase">H</div>
+            </div>
         </div>
       </div>
 

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ARCanvas } from './components/ARCanvas';
 import { Controls } from './components/Controls';
 import { GeminiModal } from './components/GeminiModal';
 import { LightingMode, SignState } from './types';
-import { Download, X } from 'lucide-react';
+import { Download, X, Maximize2, Minimize2 } from 'lucide-react';
 
 // Placeholder or default image
 const DEFAULT_SIGN = 'https://picsum.photos/400/200';
@@ -23,6 +23,28 @@ export default function App() {
   const [screenshotTrigger, setScreenshotTrigger] = useState(0);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Sync fullscreen state with document state (in case user exits via system gesture)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((e) => {
+        console.error(`Error attempting to enable fullscreen: ${e.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
 
   const handleUpdateSign = (updates: Partial<SignState>) => {
     if (sign) {
@@ -78,7 +100,7 @@ export default function App() {
       
       {/* Top Header */}
       <div className="absolute top-0 left-0 right-0 z-20 p-6 flex justify-between items-start pointer-events-none">
-        <div>
+        <div className="flex flex-col">
            <h1 className="text-2xl font-black text-white drop-shadow-md tracking-tighter">
             Sign<span className="text-indigo-400">Viz</span>
            </h1>
@@ -87,12 +109,23 @@ export default function App() {
            </p>
         </div>
         
-        {/* Help Tip */}
-        <div className="bg-black/40 backdrop-blur-md rounded-lg px-3 py-2 text-right">
-             <p className="text-white/80 text-[10px] uppercase tracking-widest font-bold">Mode</p>
-             <p className={`text-sm font-bold ${lightingMode === LightingMode.NIGHT ? 'text-blue-300' : 'text-yellow-300'}`}>
-                {lightingMode === LightingMode.NIGHT ? 'Neon Night' : 'Daylight'}
-             </p>
+        <div className="flex flex-col items-end gap-2 pointer-events-auto">
+          {/* Fullscreen Toggle */}
+          <button 
+            onClick={toggleFullscreen}
+            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white flex items-center justify-center active:scale-90 transition-transform shadow-lg"
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+
+          {/* Mode Info */}
+          <div className="bg-black/40 backdrop-blur-md rounded-lg px-3 py-2 text-right border border-white/5">
+               <p className="text-white/80 text-[10px] uppercase tracking-widest font-bold">Mode</p>
+               <p className={`text-sm font-bold ${lightingMode === LightingMode.NIGHT ? 'text-blue-300' : 'text-yellow-300'}`}>
+                  {lightingMode === LightingMode.NIGHT ? 'Neon Night' : 'Daylight'}
+               </p>
+          </div>
         </div>
       </div>
 
@@ -122,7 +155,7 @@ export default function App() {
       {/* Gemini Modal */}
       <GeminiModal
         isOpen={isGeneratorOpen}
-        onClose={() => setIsGeneratorOpen(false)}
+        onClose={() => setIsFullscreen(false) || setIsGeneratorOpen(false)}
         onImageSelected={handleGeneratedImageSelected}
       />
 
